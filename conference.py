@@ -148,6 +148,26 @@ class ConferenceApi(remote.Service):
             for conf in conferences]
         )
 
+    @endpoints.method(ConferenceForm, ConferenceForm, path='conference',
+            http_method='POST', name='createConference')
+    def createConference(self, request):
+        """Create new conference."""
+        return self._createConferenceObject(request)
+
+    @endpoints.method(message_types.VoidMessage, ConferenceForm, path='getConferencesCreated',
+            http_method='POST', name='getConferencesCreated')
+    def getConferencesCreated(self, request):
+        """Return conferences created by user."""
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+        p_key = ndb.Key(Profile, user_id)
+        conferences = Conference.query(ancestor=p_key)
+        displayName = getattr(prof, 'displayName')
+        
+        return ConferenceForms(items=[self._copyConferenceToForm(conf, displayName) for conf in conferences])
+
     def _copyConferenceToForm(self, conf, displayName):
         """Copy relevant fields from Conference to ConferenceForm."""
         cf = ConferenceForm()
@@ -218,10 +238,6 @@ class ConferenceApi(remote.Service):
         return request
 
 
-    @endpoints.method(ConferenceForm, ConferenceForm, path='conference',
-            http_method='POST', name='createConference')
-    def createConference(self, request):
-        """Create new conference."""
-        return self._createConferenceObject(request)
+
 # registers API
 api = endpoints.api_server([ConferenceApi]) 
