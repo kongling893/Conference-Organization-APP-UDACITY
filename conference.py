@@ -30,13 +30,16 @@ from models import Profile
 from models import ProfileMiniForm
 from models import ProfileForm
 from models import TeeShirtSize
+from models import Conference
+from models import ConferenceForm
+from models import ConferenceForms
+from models import ConferenceQueryForm
+from models import ConferenceQueryForms
 
 from utils import getUserId
 
 from settings import WEB_CLIENT_ID
 
-from models import Conference
-from models import ConferenceForm
 
 
 DEFAULTS = {
@@ -107,6 +110,11 @@ class ConferenceApi(remote.Service):
                     val = getattr(save_request, field)
                     if val:
                         setattr(prof, field, str(val))
+                        #if field == 'teeShirtSize':
+                        #    setattr(prof, field, str(val).upper())
+                        #else:
+                        #    setattr(prof, field, val)
+                        prof.put()
 
         # return ProfileForm
         return self._copyProfileToForm(prof)
@@ -126,6 +134,19 @@ class ConferenceApi(remote.Service):
         return self._doProfile(request)
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
+    @endpoints.method(ConferenceQueryForms, ConferenceForms,
+            path='queryConferences',
+            http_method='POST',
+            name='queryConferences')
+    def queryConferences(self, request):
+        """Query for conferences."""
+        conferences = Conference.query()
+
+        # return individual ConferenceForm object per Conference
+        return ConferenceForms(
+            items=[self._copyConferenceToForm(conf, "") \
+            for conf in conferences]
+        )
 
     def _copyConferenceToForm(self, conf, displayName):
         """Copy relevant fields from Conference to ConferenceForm."""
