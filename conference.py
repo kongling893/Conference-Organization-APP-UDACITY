@@ -168,6 +168,18 @@ class ConferenceApi(remote.Service):
         
         return ConferenceForms(items=[self._copyConferenceToForm(conf, displayName) for conf in conferences])
 
+    @endpoints.method(message_types.VoidMessage, ConferenceForms,
+        path='filterPlayground',
+        http_method='GET', name='filterPlayground')
+    def filterPlayground(self, request):
+        q = Conference.query()
+        q = q.filter(Conference.city == "Paris") 
+        q = q.filter(Conference.topic == "Medical Innovations")
+        q = q.order(Conference.name)
+        return ConferenceForms(
+            items=[self._copyConferenceToForm(conf, "") for conf in q]
+        )
+
     def _copyConferenceToForm(self, conf, displayName):
         """Copy relevant fields from Conference to ConferenceForm."""
         cf = ConferenceForm()
