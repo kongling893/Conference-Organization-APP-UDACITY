@@ -38,6 +38,10 @@ handlers:       # static then dynamic
   script: conference.api
   secure: always
 
+- url: /tasks/send_confirmation_email
+  script: main.app
+  login: admin
+
 libraries:
 
 - name: endpoints
