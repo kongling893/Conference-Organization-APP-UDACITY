@@ -10,6 +10,10 @@ handlers:       # static then dynamic
   static_files: favicon.ico
   upload: favicon\.ico
 
+- url: /crons/set_announcement
+  script: main.app
+  login: admin
+
 - url: /js
   static_dir: static/js
 
