@@ -215,7 +215,25 @@ class ConferenceApi(remote.Service):
         """Register user for selected conference."""
         return self._conferenceRegistration(request)
 
+    @endpoints.method(CONF_GET_REQUEST, SessionForms,
+            path='conference/{websafeConferenceKey}/sessions',
+            http_method='GET', name='getConferenceSessions')
+    def getConferenceSessions(self, request):
+        """Given a conference, returns all sessions."""
+        # get the key
+        wsck = request.websafeConferenceKey
+        # fetch the conference with the target key
+        conf = ndb.Key(urlsafe = wsck).get()
+        # check whether the conference exists or not
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % wsck)
 
+         # create ancestor query for all key matches for this conference
+        sessions = Session.query(ancestor=ndb.Key(Conference, conf.key.id()))
+
+        # return set of SessionForm objects per Session
+        return SessionForms(items=[self._copySessionToForm(s) for s in sessions])
 
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
             path='conferences/attending',
