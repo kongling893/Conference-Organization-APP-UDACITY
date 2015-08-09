@@ -24,6 +24,7 @@ class Profile(ndb.Model):
     displayName = ndb.StringProperty()
     mainEmail = ndb.StringProperty()
     teeShirtSize = ndb.StringProperty(default='NOT_SPECIFIED')
+    conferenceKeysToAttend = ndb.StringProperty(repeated=True)
 
 
 class ProfileMiniForm(messages.Message):
@@ -111,3 +112,31 @@ class BooleanMessage(messages.Message):
 class ConflictException(endpoints.ServiceException):
     """ConflictException -- exception mapped to HTTP 409 response"""
     http_status = httplib.CONFLICT
+    
+class Session(ndb.Model):
+    """Session -- Session object"""
+    name = ndb.StringProperty(required=True)
+    highlights = ndb.StringProperty()
+    speaker = ndb.StringProperty(required=True)
+    duration  = ndb.IntegerProperty() 
+    typeOfSession  = ndb.StringProperty(repeated=True)
+    date = ndb.DateProperty()
+    startTime = ndb.TimeProperty() 
+
+
+class SessionForm(messages.Message):
+    """SessionForm -- Session outbound form message"""
+    name  = messages.StringField(1)
+    highlights  = messages.StringField(2)
+    speaker  = messages.StringField(3)
+    duration = messages.IntegerField(4)
+    typeOfSession = messages.StringField(5, repeated=True)
+    date  = messages.StringField(6) 
+    startTime = messages.StringField(7) 
+    websafeKey = messages.StringField(8)
+    websafeConferenceKey    = messages.StringField(9)
+
+
+class SessionForms(messages.Message):
+    """SessionForms -- multiple Session outbound form message"""
+    items = messages.MessageField(SessionForm, 1, repeated=True)

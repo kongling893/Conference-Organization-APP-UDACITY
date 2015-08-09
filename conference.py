@@ -28,19 +28,7 @@ from google.appengine.ext import ndb
 from google.appengine.api import memcache
 from google.appengine.api import taskqueue
 
-from models import StringMessage
-from models import Profile
-from models import ProfileMiniForm
-from models import ProfileForm
-from models import TeeShirtSize
-from models import Conference
-from models import ConferenceForm
-from models import ConferenceForms
-from models import ConferenceQueryForm
-from models import ConferenceQueryForms
-from models import BooleanMessage
-from models import ConflictException
-
+from models import *
 
 from utils import getUserId
 
@@ -164,7 +152,10 @@ class ConferenceApi(remote.Service):
         return self._doProfile(request)
 
 # - - - Conference objects - - - - - - - - - - - - - - - - -
-    @endpoints.method(ConferenceQueryForms, ConferenceForms, path='queryConferences', http_method='POST', name='queryConferences')
+    @endpoints.method(ConferenceQueryForms, ConferenceForms,
+            path='queryConferences',
+            http_method='POST',
+            name='queryConferences')
     def queryConferences(self, request):
         """Query for conferences."""
         conferences = self._getQuery(request)
@@ -223,6 +214,8 @@ class ConferenceApi(remote.Service):
     def registerForConference(self, request):
         """Register user for selected conference."""
         return self._conferenceRegistration(request)
+
+
 
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
             path='conferences/attending',
