@@ -250,7 +250,7 @@ class ConferenceApi(remote.Service):
                 'No conference found with key: %s' % wsck)
          # create ancestor query for all key matches for this conference
         sessions = Session.query(ancestor=ndb.Key(Conference, conf.key.id()))
-        # return set of SessionForm objects per Session
+        # return set of SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_REQUEST, SessionForms,
@@ -282,7 +282,7 @@ class ConferenceApi(remote.Service):
         speaker = request.speaker
         # create query for all sessions match this speaker
         sessions = Session.query(Session.speaker == speaker)
-        # return set of SessionForm objects per Session
+        # return set of SessionForm objects
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
@@ -335,6 +335,21 @@ class ConferenceApi(remote.Service):
         profile.put()
         return self._copySessionToForm(session.get())
 
+    @endpoints.method(message_types.VoidMessage,SessionForms, 
+                      path='getSessionsInWishlist', http_method='GET',
+                      name='getSessionsInWishlist')
+    def getSessionsInWishlist(self,request):
+        """Query for all the sessions in a conference that the user is interested in."""
+        # get profile
+        profile = self._getProfileFromUser()
+        # check profile exits or not
+        if not profile:
+            raise endpoints.BadRequestException('Profile does not exist for user')
+        # get all session keys
+        sessions = ndb.get_multi(profile.sessionKeysInWishlist)
+        # return set of SessionForm objects per conference
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
 # - - - Annoucement - - - - - - - - - - - - - - - - -
     @endpoints.method(message_types.VoidMessage, StringMessage,
             path='conference/announcement/get',
@@ -364,6 +379,21 @@ class ConferenceApi(remote.Service):
             setattr(cf, 'organizerDisplayName', displayName)
         cf.check_initialized()
         return cf
+
+    def _copySessionToForm(self, session):
+        """Copy relevant fields from Session to SessionForm."""
+        cf = SessionForm()
+        for field in cf.all_fields():
+            if hasattr(conf, field.name):
+                # convert Date to date string; just copy others
+                if field.name.endswith('Date') or field.name.endswith('startTime'):
+                    setattr(cf, field.name, str(getattr(conf, field.name)))
+                else:
+                    setattr(cf, field.name, getattr(conf, field.name))
+        cf.check_initialized()
+        return cf
+
+
 
     def _createConferenceObject(self, request):
         """Create or update Conference object, returning ConferenceForm/request."""
@@ -423,7 +453,7 @@ class ConferenceApi(remote.Service):
 
 
     def _createSessionObject(self, request):
-        """Create or update Conference object, returning ConferenceForm/request."""
+        """Create or update Conference object, returning SessionForm/request."""
         # preload necessary data items
         user = endpoints.get_current_user()
         if not user:
@@ -460,8 +490,8 @@ class ConferenceApi(remote.Service):
         s_id = Session.allocate_ids(size=1, parent=p_key)[0]
         # make Session key from ID
         s_key = ndb.Key(Conference, c_id, parent=p_key)
-        data['key'] = c_key
-        data['websafeConferenceKey'] = conf
+        data['key'] = s_key
+        data['websafeConferenceKey'] = wsck
 
         # create Session, send email to organizer confirming
         # creation of Conference & return (modified) ConferenceForm
