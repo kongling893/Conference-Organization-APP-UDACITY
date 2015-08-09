@@ -75,6 +75,11 @@ SESSION_GET_REQUEST = endpoints.ResourceContainer(
     speaker =messages.StringField(3),
 )
 
+SEESION_TO_WISHLIST_REQUEST  = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    sessionKey=messages.StringField(1),
+)
+
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -305,6 +310,30 @@ class ConferenceApi(remote.Service):
         return ConferenceForms(items=[self._copyConferenceToForm(conf, names[conf.organizerUserId])\
          for conf in conferences]
         )
+
+
+    @endpoints.method(SEESION_TO_WISHLIST_REQUEST, SessionForm,
+                      path="addSessionToWishlist",
+                      http_method="POST", name='addSessionToWishlist')
+    def addSessionToWishlist(self, request):
+        """Add the session to the user's list of sessions they are interested in attending"""
+        #get session key
+        sessionKey = request.sessionKey
+        # get session object
+        session = ndb.Key(urlsafe=sessionKey).get()
+        # check that session exists or not
+        if not session:
+            raise endpoints.NotFoundException(
+                'No session found with key: %s' % sessionKey)
+
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+
+        profile = self._getProfileFromUser()
+        profile.sessionKeysInWishlist.append(session)
+        profile.put()
+        return self._copySessionToForm(session.get())
 
 # - - - Annoucement - - - - - - - - - - - - - - - - -
     @endpoints.method(message_types.VoidMessage, StringMessage,
