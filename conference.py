@@ -72,6 +72,7 @@ SESSION_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     typeOfSession=messages.StringField(1),
     websafeConferenceKey=messages.StringField(2),
+    speaker =messages.StringField(3),
 )
 
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
@@ -258,7 +259,17 @@ class ConferenceApi(remote.Service):
         # return set of SessionForm objects per Session
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
-        
+    @endpoints.method(SESSION_GET_REQUEST, SessionForms,
+            path='/sessions/{speaker}',
+            http_method='GET', name='getSessionsBySpeaker') 
+    def getSessionsBySpeaker(self, request):
+        """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
+        # get the speakeer
+        speaker = request.speaker
+        # create query for all sessions match this speaker
+        sessions = Session.query(Session.speaker == speaker)
+        # return set of SessionForm objects per Session
+        return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
             path='conferences/attending',
