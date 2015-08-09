@@ -216,10 +216,19 @@ class ConferenceApi(remote.Service):
             items=[self._copyConferenceToForm(conf, "") for conf in q]
         )
 
-    @endpoints.method(CONF_GET_REQUEST, BooleanMessage, path='conference/{websafeConferenceKey}', http_method='POST', name='registerForConference')
+    @endpoints.method(CONF_GET_REQUEST, BooleanMessage, 
+            path='conference/{websafeConferenceKey}', 
+            http_method='POST', name='registerForConference')
     def registerForConference(self, request):
         """Register user for selected conference."""
         return self._conferenceRegistration(request)
+
+    @endpoints.method(SessionForm, SessionForm,
+            path='createSession',
+            http_method='POST', name='createSession')
+    def createSession(self, request):
+        """Create a session in a given conference; open only to the organizer of this conference."""
+        return self._createSessionObject(request)
 
     @endpoints.method(CONF_GET_REQUEST, SessionForms,
             path='conference/{websafeConferenceKey}/sessions',
@@ -297,6 +306,19 @@ class ConferenceApi(remote.Service):
          for conf in conferences]
         )
 
+# - - - Annoucement - - - - - - - - - - - - - - - - -
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+            path='conference/announcement/get',
+            http_method='GET', name='getAnnouncement')
+    def getAnnouncement(self, request):
+        """Return Announcement from memcache."""
+        announcement = memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY)
+        if not announcement:
+                announcement = ""
+        return StringMessage(data=announcement)
+
+
+# - - - Helper Functions - - - - - - - - - - - - - - - - -
     def _copyConferenceToForm(self, conf, displayName):
         """Copy relevant fields from Conference to ConferenceForm."""
         cf = ConferenceForm()
@@ -313,7 +335,6 @@ class ConferenceApi(remote.Service):
             setattr(cf, 'organizerDisplayName', displayName)
         cf.check_initialized()
         return cf
-
 
     def _createConferenceObject(self, request):
         """Create or update Conference object, returning ConferenceForm/request."""
@@ -370,6 +391,59 @@ class ConferenceApi(remote.Service):
         )
 
         return request
+
+
+    def _createSessionObject(self, request):
+        """Create or update Conference object, returning ConferenceForm/request."""
+        # preload necessary data items
+        user = endpoints.get_current_user()
+        if not user:
+            raise endpoints.UnauthorizedException('Authorization required')
+        user_id = getUserId(user)
+
+        if not request.name:
+            raise endpoints.BadRequestException("Session 'name' field required")
+
+        #get cinference key
+        wsck = request.websafeConferenceKey
+        # get conference object
+        c_key = ndb.Key(urlsafe=wsck)
+        conf = c_key.get()
+        # check that conference exists or not
+        if not conf:
+            raise endpoints.NotFoundException(
+                'No conference found with key: %s' % wsck)
+        # check that user is owner
+        if conf.organizerUserId != getUserId(endpoints.get_current_user()):
+            raise endpoints.ForbiddenException(
+                'You must be the organizer to create a session.')
+
+        # copy SessionForm/ProtoRPC Message into dict
+        data = {field.name: getattr(request, field.name) for field in request.all_fields()}
+        # convert date and time from strings to Date objects; 
+        if data['date']:
+            data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
+        if data['startTime']:
+            data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H, %M").time()
+        # get Conference key from conference object
+        c_key =conf.key()
+        # allocate new Session ID with Conference key as parent
+        s_id = Session.allocate_ids(size=1, parent=p_key)[0]
+        # make Session key from ID
+        s_key = ndb.Key(Conference, c_id, parent=p_key)
+        data['key'] = c_key
+        data['websafeConferenceKey'] = conf
+
+        # create Session, send email to organizer confirming
+        # creation of Conference & return (modified) ConferenceForm
+        Session(**data).put()
+        taskqueue.add(params={'email': user.email(),
+            'conferenceInfo': repr(request)},
+            url='/tasks/send_confirmation_session_email'
+        )
+
+        return request
+
 
     def _getQuery(self, request):
         """Return formatted query from the submitted filters."""
@@ -494,15 +568,7 @@ class ConferenceApi(remote.Service):
         return announcement
 
 
-    @endpoints.method(message_types.VoidMessage, StringMessage,
-            path='conference/announcement/get',
-            http_method='GET', name='getAnnouncement')
-    def getAnnouncement(self, request):
-        """Return Announcement from memcache."""
-        announcement = memcache.get(MEMCACHE_ANNOUNCEMENTS_KEY)
-        if not announcement:
-                announcement = ""
-        return StringMessage(data=announcement)
+
 
 
 
