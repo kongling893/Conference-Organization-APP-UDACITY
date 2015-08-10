@@ -510,20 +510,39 @@ class ConferenceApi(remote.Service):
         # get Conference key from conference object
         c_key =conf.key()
         # allocate new Session ID with Conference key as parent
-        s_id = Session.allocate_ids(size=1, parent=p_key)[0]
+        s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         # make Session key from ID
-        s_key = ndb.Key(Conference, c_id, parent=p_key)
+        s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
         data['websafeConferenceKey'] = wsck
 
-        # create Session, send email to organizer confirming
-        # creation of Conference & return (modified) ConferenceForm
+        # get the speaker key
+        speakerKey = data['speakerKey']
+        # fetch the speaker with the target key
+        speaker = ndb.Key(urlsafe = speakerKey).get()
+        # check whether the speaker exists or not
+        if not speaker:
+            # if speaker dosn't exit, create a new one
+            speaker_id = Speaker.allocate_ids(size=1)[0]
+            speaker_key = ndb.Key(Speaker, c_id)
+            speakerObject = Speaker({'name': data["speakerName"], 
+                                                        "sessionKeys": [ ],
+                                                        "key":speaker_key,})
+            speakerObject.put() 
+            # update speakerKey in the creating session
+            data['speakerKey'] = speakerObject.key
+        #  save session into database
         Session(**data).put()
+        # This task wil send a confirmation email to the owner 
         taskqueue.add(params={'email': user.email(),
             'conferenceInfo': repr(request)},
             url='/tasks/send_confirmation_session_email'
         )
-
+        # The task will check if there is more than one session by this speaker at this conference,
+        # also add a new Memcache entry that features the speaker and session names.
+        taskqueue.add(params={'speakerKey': data['speakerKey'],},
+                url='/tasks/check_featured_speaker'
+                )
         return request
 
 

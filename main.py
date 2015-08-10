@@ -50,8 +50,21 @@ class SendConfirmationOfSessionEmailHandler(webapp2.RequestHandler):
                 'conferenceInfo')
         )
 
+class CheckFeaturedSpeakerHandler(webapp2.RequestHandler):
+    def post(self):
+        """Check FeaturedSpeaker and Set FeaturedSpeaker in Memcache."""
+        # update speaker and add session to speaker
+        ConferenceApi._updateSpeaker(self.request)
+        # cache featured speaker
+        speaker = ndb.Key(urlsafe = self.request.get("speakerKey")).get()
+        if  len(speaker.sessionKeys) > 1:
+            featuredSpeaker = {"name" : speaker.name, "speakerKey":  speaker.key()}
+            memcache.set(MEMCACHE_FEATUREDSPEAKER_KEY, featuredSpeaker)
+        self.response.set_status(204)
+
 app = webapp2.WSGIApplication([
     ('/crons/set_announcement', SetAnnouncementHandler),
     ('/tasks/send_confirmation_email', SendConfirmationEmailHandler),
     ('/tasks/send_confirmation_session_email', SendConfirmationOfSessionEmailHandler),
+    ('/tasks/check_featured_speaker', CheckFeaturedSpeakerHandler),
 ], debug=True)
