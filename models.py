@@ -116,11 +116,11 @@ class ConflictException(endpoints.ServiceException):
     
 class Session(ndb.Model):
     """Session -- Session object"""
-    name = ndb.StringProperty(required=True)
+    name = ndb.StringProperty()
     highlights = ndb.StringProperty()
-    speaker = ndb.StringProperty(required=True)
+    speaker = ndb.StringProperty(required=True)  # a session may have multiple speakers
     duration  = ndb.IntegerProperty() 
-    typeOfSession  = ndb.StringProperty(repeated=True)
+    typeOfSession  = ndb.StringProperty(repeated=True) # a session may have many types
     date = ndb.DateProperty()
     startTime = ndb.TimeProperty() 
 
@@ -129,13 +129,26 @@ class SessionForm(messages.Message):
     """SessionForm -- Session outbound form message"""
     name  = messages.StringField(1)
     highlights  = messages.StringField(2)
-    speaker  = messages.StringField(3)
+    speaker  = messages.StringField(3,required=True)
     duration = messages.IntegerField(4)
     typeOfSession = messages.StringField(5, repeated=True)
     date  = messages.StringField(6) 
     startTime = messages.StringField(7) 
 
-
 class SessionForms(messages.Message):
     """SessionForms -- multiple Session outbound form message"""
     items = messages.MessageField(SessionForm, 1, repeated=True)
+
+class Speaker(ndb.Model):
+    """Speaker -- Speaker object"""
+    name = ndb.StringProperty()
+    sessionKeys = ndb.StringProperty(repeated=True)
+
+class SpeakerForm(messages.Message):
+    """SpeakerForm -- Speaker outbound form message"""
+    name = messages.StringField(1)
+    sessionKeys = messages.StringField(2, repeated=True)
+
+class SpeakerForms(messages.Message):
+    """SpeakerForms  -- multiple Speaker outbound form message"""
+    items = messages.MessageField(SpeakerForm, 1, repeated=True)

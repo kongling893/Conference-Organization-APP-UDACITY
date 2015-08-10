@@ -72,8 +72,13 @@ SESSION_GET_REQUEST = endpoints.ResourceContainer(
     message_types.VoidMessage,
     typeOfSession=messages.StringField(1),
     websafeConferenceKey=messages.StringField(2),
-    speaker =messages.StringField(3),
 )
+
+SESSION_GET_BY_SPEAKER_REQUEST  = endpoints.ResourceContainer(
+    message_types.VoidMessage,
+    speakerKey =messages.StringField(1),
+)
+
 
 SEESION_TO_WISHLIST_REQUEST  = endpoints.ResourceContainer(
     message_types.VoidMessage,
@@ -81,7 +86,7 @@ SEESION_TO_WISHLIST_REQUEST  = endpoints.ResourceContainer(
 )
 
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
-
+MEMCACHE_FEATUREDSPEAKER_KEY = "FEATURED_SPEAKER"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 @endpoints.api(name='conference', version='v1', audiences=[ANDROID_AUDIENCE],
@@ -273,15 +278,21 @@ class ConferenceApi(remote.Service):
         # return set of SessionForm objects per Session
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
-    @endpoints.method(SESSION_GET_REQUEST, SessionForms,
+    @endpoints.method(SESSION_GET_BY_SPEAKER_REQUEST, SessionForms,
             path='/sessions/{speaker}',
             http_method='GET', name='getSessionsBySpeaker') 
     def getSessionsBySpeaker(self, request):
         """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
-        # get the speakeer
-        speaker = request.speaker
-        # create query for all sessions match this speaker
-        sessions = Session.query(Session.speaker == speaker)
+        # get the speaker key
+        speakerKey = request.speakerKey
+        # fetch the speaker with the target key
+        speaker = ndb.Key(urlsafe = speakerKey).get()
+        # check whether the speaker exists or not
+        if not speaker:
+            raise endpoints.NotFoundException(
+                'No speaker found with key: %s' % speakerKey)
+        # get all the sessions by the speaker 
+        sessions = [   ndb.Key(urlsafe = key).get() for key in speaker.sessionKeys ]
         # return set of SessionForm objects
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
@@ -349,6 +360,18 @@ class ConferenceApi(remote.Service):
         sessions = ndb.get_multi(profile.sessionKeysInWishlist)
         # return set of SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
+
+    @endpoints.method(message_types.VoidMessage, StringMessage,
+                      path='speaker/get_features',
+                      http_method='GET', name='getFeaturedSpeaker')
+    def getFeaturedSpeaker(self, request):
+        """Get all featured speakers and return json data"""
+        featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKERS)
+        if not featuredSpeaker:
+            featuredSpeaker = self._cacheFeaturedSpeaker()
+
+        # return json data
+        return StringMessage(data=json.dumps(featuredSpeaker))
 
 # - - - Annoucement - - - - - - - - - - - - - - - - -
     @endpoints.method(message_types.VoidMessage, StringMessage,
