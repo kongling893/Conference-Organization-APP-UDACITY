@@ -77,6 +77,7 @@ SESSION_GET_REQUEST = endpoints.ResourceContainer(
 SESSION_GET_BY_SPEAKER_REQUEST  = endpoints.ResourceContainer(
     message_types.VoidMessage,
     speakerKey =messages.StringField(1),
+	
 )
 
 
@@ -279,7 +280,7 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_BY_SPEAKER_REQUEST, SessionForms,
-            path='/sessions/{speaker}',
+            path='/sessions/{speakerKey}',
             http_method='GET', name='getSessionsBySpeaker') 
     def getSessionsBySpeaker(self, request):
         """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
@@ -407,12 +408,12 @@ class ConferenceApi(remote.Service):
         """Copy relevant fields from Session to SessionForm."""
         cf = SessionForm()
         for field in cf.all_fields():
-            if hasattr(conf, field.name):
+            if hasattr(session, field.name):
                 # convert Date to date string; just copy others
                 if field.name.endswith('Date') or field.name.endswith('startTime'):
-                    setattr(cf, field.name, str(getattr(conf, field.name)))
+                    setattr(cf, field.name, str(getattr(session, field.name)))
                 else:
-                    setattr(cf, field.name, getattr(conf, field.name))
+                    setattr(cf, field.name, getattr(session, field.name))
         cf.check_initialized()
         return cf
 
@@ -667,6 +668,11 @@ class ConferenceApi(remote.Service):
             memcache.delete(MEMCACHE_ANNOUNCEMENTS_KEY)
 
         return announcement
+
+    @staticmethod
+    def _updateSpeaker():
+        pass
+
 
 
 
