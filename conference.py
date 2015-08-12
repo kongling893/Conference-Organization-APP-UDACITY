@@ -519,7 +519,7 @@ class ConferenceApi(remote.Service):
         )
         # The task will check if there is more than one session by this speaker at this conference,
         # also add a new Memcache entry that features the speaker and session names.
-        taskqueue.add(params={'speaker': data['speaker'], 'sessionKey': s_key.key()},
+        taskqueue.add(params={'speaker': data['speaker'], 'sessionKey': s_key.urlsafe()},
                 url='/tasks/check_featured_speaker'
                 )
         return request
@@ -648,13 +648,14 @@ class ConferenceApi(remote.Service):
         return announcement
 
     @staticmethod
-    def _updateSpeaker(speaker, sessionKey):
+    def _updateSpeaker(name, sessionKey):
         speaker = Speaker.query()
-        speaker = speaker.filter( Speaker.name == speaker )[0]
-        if not speaker:
-            return 0
-        speaker.sessionKeys.append(sessionKey )
-        return len(speaker.sessionKeys)
+        speaker = speaker.filter( Speaker.name == name )
+        num = 0
+        for s in speaker:
+            s.sessionKeys.append(sessionKey )
+            num = num + len(s.sessionKeys)
+        return num
 
 
 
