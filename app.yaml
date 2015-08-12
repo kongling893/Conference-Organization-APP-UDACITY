@@ -42,11 +42,11 @@ handlers:       # static then dynamic
   script: main.app
   login: admin
 
-  - url: /tasks/send_confirmation_session_email
+- url: /tasks/send_confirmation_session_email
   script: main.app
   login: admin
 
-  - url: /tasks/check_featured_speaker
+- url: /tasks/check_featured_speaker
   script: main.app
   login: admin
 

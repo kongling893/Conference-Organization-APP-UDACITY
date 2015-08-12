@@ -54,12 +54,10 @@ class CheckFeaturedSpeakerHandler(webapp2.RequestHandler):
     def post(self):
         """Check FeaturedSpeaker and Set FeaturedSpeaker in Memcache."""
         # update speaker and add session to speaker
-        ConferenceApi._updateSpeaker(self.request)
-        # cache featured speaker
-        speaker = ndb.Key(urlsafe = self.request.get("speakerKey")).get()
-        if  len(speaker.sessionKeys) > 1:
-            featuredSpeaker = {"name" : speaker.name, "speakerKey":  speaker.key()}
-            memcache.set(MEMCACHE_FEATUREDSPEAKER_KEY, featuredSpeaker)
+        num = ConferenceApi._updateSpeaker(self.request.get("speaker"), self.request.get("sessionKey"))
+        if  num > 1:
+            featuredSpeaker =  self.request.get("speaker")
+            memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featuredSpeaker)
         self.response.set_status(204)
 
 app = webapp2.WSGIApplication([

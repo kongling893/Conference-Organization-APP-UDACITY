@@ -256,7 +256,8 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % wsck)
          # create ancestor query for all key matches for this conference
-        sessions = Session.query(ancestor=ndb.Key(Conference, conf.key.id()))
+        sessions = Session.query()
+        Sessions = sessions.filter(Session.websafeConferenceKey == wsck)
         # return set of SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
@@ -276,7 +277,8 @@ class ConferenceApi(remote.Service):
             raise endpoints.NotFoundException(
                 'No conference found with key: %s' % wsck)
         # create ancestor query for all key matches for this conference and type is what we want
-        sessions = Session.query(Session.typeOfSession == typeOfSession, ancestor=ndb.Key(Conference, conf.key.id()))
+        sessions = Session.query()
+        sessions = sessions.filter(Session.typeOfSession == typeOfSession, Session.websafeConferenceKey == wsck)
         # return set of SessionForm objects per Session
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
@@ -285,8 +287,8 @@ class ConferenceApi(remote.Service):
             http_method='GET', name='getSessionsBySpeaker') 
     def getSessionsBySpeaker(self, request):
         """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
-        Sessions = Session.query()
-        Sessions = Sessions.filter(Session.speaker == request.speaker)
+        sessions = Session.query()
+        sessions = sessions.filter(Session.speaker == request.speaker)
         # return set of SessionForm objects
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
@@ -403,7 +405,7 @@ class ConferenceApi(remote.Service):
         for field in cf.all_fields():
             if hasattr(session, field.name):
                 # convert Date to date string; just copy others
-                if field.name.endswith('Date') or field.name.endswith('startTime'):
+                if field.name.endswith('date') or field.name.endswith('startTime'):
                     setattr(cf, field.name, str(getattr(session, field.name)))
                 else:
                     setattr(cf, field.name, getattr(session, field.name))
@@ -517,7 +519,7 @@ class ConferenceApi(remote.Service):
         )
         # The task will check if there is more than one session by this speaker at this conference,
         # also add a new Memcache entry that features the speaker and session names.
-        taskqueue.add(params={'speaker': data['speaker'],},
+        taskqueue.add(params={'speaker': data['speaker'], 'sessionKey': s_key.key()},
                 url='/tasks/check_featured_speaker'
                 )
         return request
@@ -646,8 +648,14 @@ class ConferenceApi(remote.Service):
         return announcement
 
     @staticmethod
-    def _updateSpeaker():
-        pass
+    def _updateSpeaker(speaker, sessionKey):
+        speaker = Speaker.query()
+        speaker = speaker.filter( Speaker.name == speaker )[0]
+        if not speaker:
+            return 0
+        speaker.sessionKeys.append(sessionKey )
+        return len(speaker.sessionKeys)
+
 
 
 
