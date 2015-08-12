@@ -76,7 +76,7 @@ SESSION_GET_REQUEST = endpoints.ResourceContainer(
 
 SESSION_GET_BY_SPEAKER_REQUEST  = endpoints.ResourceContainer(
     message_types.VoidMessage,
-    speakerKey =messages.StringField(1),
+    speaker =messages.StringField(1),
 	
 )
 
@@ -87,7 +87,7 @@ SEESION_TO_WISHLIST_REQUEST  = endpoints.ResourceContainer(
 )
 
 MEMCACHE_ANNOUNCEMENTS_KEY = "RECENT_ANNOUNCEMENTS"
-MEMCACHE_FEATUREDSPEAKER_KEY = "FEATURED_SPEAKER"
+MEMCACHE_FEATURED_SPEAKER_KEY = "FEATURED_SPEAKER"
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 @endpoints.api(name='conference', version='v1', audiences=[ANDROID_AUDIENCE],
@@ -200,7 +200,7 @@ class ConferenceApi(remote.Service):
         """Create new conference."""
         return self._createConferenceObject(request)
 
-    @endpoints.method(message_types.VoidMessage, ConferenceForm, path='getConferencesCreated',
+    @endpoints.method(message_types.VoidMessage, ConferenceForms, path='getConferencesCreated',
             http_method='POST', name='getConferencesCreated')
     def getConferencesCreated(self, request):
         """Return conferences created by user."""
@@ -210,6 +210,7 @@ class ConferenceApi(remote.Service):
         user_id = getUserId(user)
         p_key = ndb.Key(Profile, user_id)
         conferences = Conference.query(ancestor=p_key)
+        prof = ndb.Key(Profile, user_id).get()
         displayName = getattr(prof, 'displayName')
         
         return ConferenceForms(items=[self._copyConferenceToForm(conf, displayName) for conf in conferences])
@@ -220,7 +221,7 @@ class ConferenceApi(remote.Service):
     def filterPlayground(self, request):
         q = Conference.query()
         q = q.filter(Conference.city == "Paris") 
-        q = q.filter(Conference.topic == "Medical Innovations")
+        q = q.filter(Conference.topics == "Medical Innovations")
         q = q.filter(Conference.month==6)
         q = q.order(Conference.name)
         return ConferenceForms(
@@ -280,20 +281,12 @@ class ConferenceApi(remote.Service):
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
     @endpoints.method(SESSION_GET_BY_SPEAKER_REQUEST, SessionForms,
-            path='/sessions/{speakerKey}',
+            path='/sessions/{speaker}',
             http_method='GET', name='getSessionsBySpeaker') 
     def getSessionsBySpeaker(self, request):
         """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
-        # get the speaker key
-        speakerKey = request.speakerKey
-        # fetch the speaker with the target key
-        speaker = ndb.Key(urlsafe = speakerKey).get()
-        # check whether the speaker exists or not
-        if not speaker:
-            raise endpoints.NotFoundException(
-                'No speaker found with key: %s' % speakerKey)
-        # get all the sessions by the speaker 
-        sessions = [   ndb.Key(urlsafe = key).get() for key in speaker.sessionKeys ]
+        Sessions = Session.query()
+        Sessions = Sessions.filter(Session.speaker == request.speaker)
         # return set of SessionForm objects
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
@@ -367,9 +360,9 @@ class ConferenceApi(remote.Service):
                       http_method='GET', name='getFeaturedSpeaker')
     def getFeaturedSpeaker(self, request):
         """Get all featured speakers and return json data"""
-        featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKERS)
+        featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
         if not featuredSpeaker:
-            featuredSpeaker = self._cacheFeaturedSpeaker()
+            return StringMessage(data="")
 
         # return json data
         return StringMessage(data=json.dumps(featuredSpeaker))
@@ -508,8 +501,6 @@ class ConferenceApi(remote.Service):
             data['date'] = datetime.strptime(data['date'][:10], "%Y-%m-%d").date()
         if data['startTime']:
             data['startTime'] = datetime.strptime(data['startTime'][:10],  "%H, %M").time()
-        # get Conference key from conference object
-        c_key =conf.key()
         # allocate new Session ID with Conference key as parent
         s_id = Session.allocate_ids(size=1, parent=c_key)[0]
         # make Session key from ID
@@ -517,21 +508,6 @@ class ConferenceApi(remote.Service):
         data['key'] = s_key
         data['websafeConferenceKey'] = wsck
 
-        # get the speaker key
-        speakerKey = data['speakerKey']
-        # fetch the speaker with the target key
-        speaker = ndb.Key(urlsafe = speakerKey).get()
-        # check whether the speaker exists or not
-        if not speaker:
-            # if speaker dosn't exit, create a new one
-            speaker_id = Speaker.allocate_ids(size=1)[0]
-            speaker_key = ndb.Key(Speaker, c_id)
-            speakerObject = Speaker({'name': data["speakerName"], 
-                                                        "sessionKeys": [ ],
-                                                        "key":speaker_key,})
-            speakerObject.put() 
-            # update speakerKey in the creating session
-            data['speakerKey'] = speakerObject.key
         #  save session into database
         Session(**data).put()
         # This task wil send a confirmation email to the owner 
@@ -541,7 +517,7 @@ class ConferenceApi(remote.Service):
         )
         # The task will check if there is more than one session by this speaker at this conference,
         # also add a new Memcache entry that features the speaker and session names.
-        taskqueue.add(params={'speakerKey': data['speakerKey'],},
+        taskqueue.add(params={'speaker': data['speaker'],},
                 url='/tasks/check_featured_speaker'
                 )
         return request
