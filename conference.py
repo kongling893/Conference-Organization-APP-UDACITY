@@ -364,8 +364,7 @@ class ConferenceApi(remote.Service):
         """Get all featured speakers and return json data"""
         featuredSpeaker = memcache.get(MEMCACHE_FEATURED_SPEAKER_KEY)
         if not featuredSpeaker:
-            return StringMessage(data="")
-
+            featuredSpeaker = ""
         # return json data
         return StringMessage(data=json.dumps(featuredSpeaker))
 
@@ -409,6 +408,8 @@ class ConferenceApi(remote.Service):
                     setattr(cf, field.name, str(getattr(session, field.name)))
                 else:
                     setattr(cf, field.name, getattr(session, field.name))
+            elif field.name == "sessionSafeKey":
+                setattr(cf, field.name, session.key.urlsafe())
         cf.check_initialized()
         return cf
 
@@ -517,11 +518,6 @@ class ConferenceApi(remote.Service):
             'conferenceInfo': repr(request)},
             url='/tasks/send_confirmation_session_email'
         )
-        # The task will check if there is more than one session by this speaker at this conference,
-        # also add a new Memcache entry that features the speaker and session names.
-        taskqueue.add(params={'speaker': data['speaker'], 'sessionKey': s_key.urlsafe()},
-                url='/tasks/check_featured_speaker'
-                )
         return request
 
 
@@ -648,12 +644,33 @@ class ConferenceApi(remote.Service):
         return announcement
 
     @staticmethod
+    def _cacheFeaturedSpeaker():
+        """Get Featured Speaker & assign to memcache;"""
+        sessions = Session.query()
+        speakersCounter = {}
+        featured_speaker = ""
+        num = 0
+        for session in sessions:
+            if session.speaker:
+                if session.speaker not in speakersCounter:
+                    speakersCounter[session.speaker] = 1
+                else:
+                    speakersCounter[session.speaker] += 1
+                if speakersCounter[session.speaker] > num:
+                    featured_speaker = session.speaker
+                    num = speakersCounter[session.speaker] 
+        memcache.set(MEMCACHE_FEATURED_SPEAKER_KEY, featured_speaker)
+        return featured_speaker
+        
+
+    @staticmethod
     def _updateSpeaker(name, sessionKey):
         speaker = Speaker.query()
         speaker = speaker.filter( Speaker.name == name )
         num = 0
         for s in speaker:
             s.sessionKeys.append(sessionKey )
+            s.put()
             num = num + len(s.sessionKeys)
         return num
 

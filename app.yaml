@@ -14,6 +14,12 @@ handlers:       # static then dynamic
   script: main.app
   login: admin
 
+- url: /crons/check_featured_speaker
+  script: main.app
+
+- url: /tasks/check_featured_speaker
+  script: main.app
+
 - url: /js
   static_dir: static/js
 
@@ -46,9 +52,6 @@ handlers:       # static then dynamic
   script: main.app
   login: admin
 
-- url: /tasks/check_featured_speaker
-  script: main.app
-  login: admin
 
 libraries:
 
