@@ -338,9 +338,19 @@ class ConferenceApi(remote.Service):
             raise endpoints.UnauthorizedException('Authorization required')
 
         profile = self._getProfileFromUser()
-        profile.sessionKeysInWishlist.append(session)
-        profile.put()
-        return self._copySessionToForm(session.get())
+        if not profile:
+            raise endpoints.BadRequestException('Profile does not exist for user')
+        # check if key and Session
+        if not type(ndb.Key(urlsafe=sessionKey).get()) == Session:
+            raise endpoints.NotFoundException('This key is not a Session instance')
+        # add session to wishlist
+        if sessionKey not in profile.sessionKeysInWishlist:
+            try:
+                profile.sessionKeysInWishlist.append(sessionKey)
+                profile.put()
+            except Exception:
+                raise endpoints.InternalServerErrorException('Error in storing the wishlist')
+        return self._copySessionToForm(session)
 
     @endpoints.method(message_types.VoidMessage,SessionForms, 
                       path='getSessionsInWishlist', http_method='GET',
