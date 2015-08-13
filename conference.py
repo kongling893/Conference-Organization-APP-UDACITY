@@ -378,6 +378,21 @@ class ConferenceApi(remote.Service):
         # return json data
         return StringMessage(data=json.dumps(featuredSpeaker))
 
+
+    @endpoints.method(message_types.VoidMessage,BooleanMessage, 
+                      path='clearAllData', http_method='GET',
+                      name='clearAllData')
+    def clearAllData(self,request):
+        """Clear all the data saved."""
+        ndb.delete_multi(Session.query().fetch(keys_only = True))
+        ndb.delete_multi(Conference.query().fetch(keys_only = True))
+        profiles = Profile.query()
+        for profile in profiles:
+            profile.conferenceKeysToAttend = []
+            profile.sessionKeysInWishlist = []
+            profile.put()
+        return  BooleanMessage(data=True)
+
 # - - - Annoucement - - - - - - - - - - - - - - - - -
     @endpoints.method(message_types.VoidMessage, StringMessage,
             path='conference/announcement/get',
