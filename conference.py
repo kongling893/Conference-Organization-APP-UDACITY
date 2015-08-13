@@ -357,13 +357,12 @@ class ConferenceApi(remote.Service):
                       name='getSessionsInWishlist')
     def getSessionsInWishlist(self,request):
         """Query for all the sessions in a conference that the user is interested in."""
-        # get profile
         profile = self._getProfileFromUser()
-        # check profile exits or not
         if not profile:
             raise endpoints.BadRequestException('Profile does not exist for user')
         # get all session keys
-        sessions = ndb.get_multi(profile.sessionKeysInWishlist)
+        sessionkeys = [ndb.Key(urlsafe=sessionkey) for sessionkey in profile.sessionKeysInWishlist]
+        sessions = ndb.get_multi(sessionkeys)
         # return set of SessionForm objects per conference
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])
 
@@ -535,6 +534,7 @@ class ConferenceApi(remote.Service):
         s_key = ndb.Key(Session, s_id, parent=c_key)
         data['key'] = s_key
         data['websafeConferenceKey'] = wsck
+        del data['sessionSafeKey']
 
         #  save session into database
         Session(**data).put()
