@@ -663,16 +663,6 @@ class ConferenceApi(remote.Service):
         return featured_speaker
         
 
-    @staticmethod
-    def _updateSpeaker(name, sessionKey):
-        speaker = Speaker.query()
-        speaker = speaker.filter( Speaker.name == name )
-        num = 0
-        for s in speaker:
-            s.sessionKeys.append(sessionKey )
-            s.put()
-            num = num + len(s.sessionKeys)
-        return num
 
 
 
