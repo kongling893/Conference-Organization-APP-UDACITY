@@ -98,8 +98,13 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 	-  `getAttenderByConference(websafeConferenceKey)` -- Given a conference, return all attenders.
 	-  `getAttenderBySession(sessionSafeKey)` -- Given a session, return all users who are interested in this session.
 3. Solve the following query related problem
-Question: Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?
 
-Answer: Since google datastore APIs only support one inequality filter for one property in a query, we can not get the result in only one query since in this question two properties need to be filtered. But we can seperate the query into two by performing twice filterings.
+	Question: Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?
+
+	Answer: Since google datastore APIs only support one inequality filter for one property in a query, we can not get the result in only one query since in this question two properties need to be filtered. But we can seperate the query into two by performing twice filterings.
 
 ## Task 4: Add a Task
+When a new session is added, the speaker is checked if multiple sessions are held by this speaker. A new memcache entry is added with the session names.
+1. Instead of adding a one-time task to check the featured speaker into `taskqueue`, I set this task as a `cron task` which is scheduled to check the featured speaker once each a hour.
+2. `getFeaturedSpeaker()` method is realized to get the featured speaker.
+
