@@ -43,7 +43,7 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 
 
 ## Task 1: Add Sessions to a Conference
-- Session Model 
+1. Session class 
 	- Created as `ndb.Model`.
  	- Has the following attributes:
 	```python
@@ -58,7 +58,7 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 		startTime = ndb.TimeProperty() 
 		websafeConferenceKey =  ndb.StringProperty()
 	```
-- SessionForm 
+2. SessionForm class
 	- Created as `messages.Message`.
 	- Has the  attributes corresponding the ones in Session Model but sessionSafeKey is added. 	
 	```python
@@ -74,14 +74,22 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 		sessionSafeKey  = messages.StringField(8)
 		websafeConferenceKey  = messages.StringField(9)
 	```
-- The following Endpoints methods are realized to manage sessions:
-	- ```getConferenceSessions(websafeConferenceKey)``` -- Given a conference, return all sessions
-	- ```getConferenceSessionsByType(websafeConferenceKey, typeOfSession)``` Given a conference, return all sessions of a specified type (eg lecture, keynote, workshop)
-	- ```getSessionsBySpeaker(speaker)``` -- Given a speaker, return all sessions given by this particular speaker, across all conferences
-	- ```createSession(SessionForm, websafeConferenceKey)``` -- open only to the organizer of the conference
+3. Speaker
+	-  Defined as a string attribute in Session classes.
+4. The following Endpoints methods are realized to manage sessions:
+	- `getConferenceSessions(websafeConferenceKey)` -- Given a conference, return all sessions.
+	- `getConferenceSessionsByType(websafeConferenceKey, typeOfSession)` -- Given a conference, return all sessions of a specified type (eg lecture, keynote, workshop)
+	- `getSessionsBySpeaker(speaker)` -- Given a speaker, return all sessions given by this particular speaker, across all conferences
+	- `createSession(SessionForm, websafeConferenceKey)` -- Open only to the organizer of the conference
 
 ## Task 2: Add Sessions to User Wishlist
+1. Profile class
+	-  Added a new attribute `sessionKeysInWishlist = ndb.StringProperty(repeated=True)` into Profile class.
+	-  In `sessionKeysInWishlist`, the `urlsafe` of the sessions which the user is interested in are stored.
 
+2. The following Endpoints methods are realized to manage sessions:
+	- `addSessionToWishlist(SessionKey)` -- adds the session to the user's list of sessions they are interested in attending.
+	- `getSessionsInWishlist()` -- query for all the sessions in a conference that the user is interested in.
 
 ## Task 3: Work on indexes and queries
 
