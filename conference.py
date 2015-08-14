@@ -81,7 +81,7 @@ SESSION_GET_BY_SPEAKER_REQUEST  = endpoints.ResourceContainer(
 )
 
 
-SEESION_TO_WISHLIST_REQUEST  = endpoints.ResourceContainer(
+SEESION_REQUEST  = endpoints.ResourceContainer(
     message_types.VoidMessage,
     sessionKey=messages.StringField(1),
 )
@@ -292,6 +292,34 @@ class ConferenceApi(remote.Service):
         # return set of SessionForm objects
         return SessionForms(items=[self._copySessionToForm(session) for session in sessions])       
 
+    @endpoints.method(CONF_GET_REQUEST, ProfileForms,
+            path='/getAttenderByConference/{websafeConferenceKey}',
+            http_method='GET', name='getAttenderByConference') 
+    def getAttenderByConference(self, request):
+        """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
+        wsck = request.websafeConferenceKey
+        profiles = Profile.query()
+        attenders = []
+        for pro in profiles:
+            if wsck in pro.conferenceKeysToAttend:
+                attenders.append(pro)
+        # return set of SessionForm objects
+        return ProfileForms(items=[self._copyProfileToForm(attender) for attender in attenders])    
+
+    @endpoints.method(SEESION_REQUEST, ProfileForms,
+            path='/getAttenderBySession/{sessionKey}',
+            http_method='GET', name='getAttenderBySession') 
+    def getAttenderBySession(self, request):
+        """Given a speaker, return all sessions given by this particular speaker, across all conferences."""
+        sessionKey = request.sessionKey
+        profiles = Profile.query()
+        attenders = []
+        for pro in profiles:
+            if sessionKey in pro.sessionKeysInWishlist:
+                attenders.append(pro)
+        # return set of SessionForm objects
+        return ProfileForms(items=[self._copyProfileToForm(attender) for attender in attenders])    
+
     @endpoints.method(message_types.VoidMessage, ConferenceForms,
             path='conferences/attending',
             http_method='GET', name='getConferencesToAttend')
@@ -319,7 +347,7 @@ class ConferenceApi(remote.Service):
         )
 
 
-    @endpoints.method(SEESION_TO_WISHLIST_REQUEST, SessionForm,
+    @endpoints.method(SEESION_REQUEST, SessionForm,
                       path="addSessionToWishlist",
                       http_method="POST", name='addSessionToWishlist')
     def addSessionToWishlist(self, request):
@@ -424,19 +452,18 @@ class ConferenceApi(remote.Service):
 
     def _copySessionToForm(self, session):
         """Copy relevant fields from Session to SessionForm."""
-        cf = SessionForm()
-        for field in cf.all_fields():
+        ss = SessionForm()
+        for field in ss.all_fields():
             if hasattr(session, field.name):
                 # convert Date to date string; just copy others
                 if field.name.endswith('date') or field.name.endswith('startTime'):
-                    setattr(cf, field.name, str(getattr(session, field.name)))
+                    setattr(ss, field.name, str(getattr(session, field.name)))
                 else:
-                    setattr(cf, field.name, getattr(session, field.name))
+                    setattr(ss, field.name, getattr(session, field.name))
             elif field.name == "sessionSafeKey":
-                setattr(cf, field.name, session.key.urlsafe())
-        cf.check_initialized()
-        return cf
-
+                setattr(ss, field.name, session.key.urlsafe())
+        ss.check_initialized()
+        return ss
 
 
     def _createConferenceObject(self, request):

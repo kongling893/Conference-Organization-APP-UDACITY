@@ -92,5 +92,12 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 	- `getSessionsInWishlist()` -- query for all the sessions in a conference that the user is interested in.
 
 ## Task 3: Work on indexes and queries
+1. Create indexes
+2. Come up with 2 additional queries:
+	-  `getAttenderByConference(websafeConferenceKey)` -- Given a conference, return all attenders.
+	-  `getAttenderBySession(sessionSafeKey)` -- Given a session, return all users who are interested in this session.
+3. Solve the following query related problem
+
+Let’s say that you don't like workshops and you don't like sessions after 7 pm. How would you handle a query for all non-workshop sessions before 7 pm? What is the problem for implementing this query? What ways to solve it did you think of?
 
 ## Task 4: Add a Task

@@ -41,6 +41,9 @@ class ProfileForm(messages.Message):
     mainEmail = messages.StringField(3)
     teeShirtSize = messages.EnumField('TeeShirtSize', 4)
 
+class ProfileForms(messages.Message):
+    """ProfileForms -- multiple Profile outbound form message"""
+    items = messages.MessageField(ProfileForm, 1, repeated=True)
 
 class TeeShirtSize(messages.Enum):
     """TeeShirtSize -- t-shirt size enumeration value"""
