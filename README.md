@@ -74,6 +74,11 @@ The website is deployed on Google Cloud Platform: https://windy-bounty-94723.app
 		sessionSafeKey  = messages.StringField(8)
 		websafeConferenceKey  = messages.StringField(9)
 	```
+- The following Endpoints methods are realized to manage sessions:
+	- ```getConferenceSessions(websafeConferenceKey)``` -- Given a conference, return all sessions
+	- ```getConferenceSessionsByType(websafeConferenceKey, typeOfSession)``` Given a conference, return all sessions of a specified type (eg lecture, keynote, workshop)
+	- ```getSessionsBySpeaker(speaker)``` -- Given a speaker, return all sessions given by this particular speaker, across all conferences
+	- ```createSession(SessionForm, websafeConferenceKey)``` -- open only to the organizer of the conference
 
 ## Task 2: Add Sessions to User Wishlist
 
